@@ -36,6 +36,7 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                 run_id=run_id,
                 task_id=task_id,
                 workspace_root=state["workspace_root"],
+                retry_count=task.retry_count,
             )
             decision = tool.evaluate_permission(
                 task.tool_args, state.get("user_preferences_snapshot", {})

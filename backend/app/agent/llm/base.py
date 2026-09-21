@@ -48,3 +48,8 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def generate_report(self, request: ReportRequest) -> str: ...
+
+    @abstractmethod
+    async def complete_text(self, prompt: str) -> str:
+        """Free-form text completion, used by tools that need ad-hoc LLM help (e.g.
+        web_research.summarize) rather than the structured plan/report flows above."""

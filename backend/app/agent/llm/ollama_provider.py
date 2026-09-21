@@ -81,12 +81,18 @@ class OllamaProvider(LLMProvider):
             "Write a concise final report (plain text, a few short paragraphs) summarizing "
             "what was accomplished, referencing the task outcomes above."
         )
+        return await self._chat(prompt, temperature=0.2)
+
+    async def complete_text(self, prompt: str) -> str:
+        return await self._chat(prompt, temperature=0.2)
+
+    async def _chat(self, prompt: str, *, temperature: float) -> str:
         try:
             response = await asyncio.wait_for(
                 self._client.chat(
                     model=self._model,
                     messages=[{"role": "user", "content": prompt}],
-                    options={"temperature": 0.2},
+                    options={"temperature": temperature},
                 ),
                 timeout=self._timeout,
             )

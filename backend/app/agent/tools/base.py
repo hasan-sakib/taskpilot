@@ -1,10 +1,17 @@
 import enum
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from app.agent.llm.base import LLMProvider
+    from app.agent.tools.registry import ToolRegistry
+    from app.core.config import Settings
 
 
 class ToolCategory(enum.StrEnum):
@@ -32,6 +39,13 @@ class ToolRunContext:
     run_id: str
     task_id: str
     execution_id: str
+    # Tools that need DB access (task management) open their own short-lived session via
+    # this factory, consistent with every other part of the codebase -- never share the
+    # calling node's own session, which would tangle unrelated commit/rollback lifecycles.
+    session_factory: Callable[[], AsyncSession]
+    tool_registry: "ToolRegistry"
+    llm_provider: "LLMProvider"
+    settings: "Settings"
 
 
 class ToolError(Exception):

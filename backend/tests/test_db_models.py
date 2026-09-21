@@ -189,6 +189,57 @@ async def test_approval_request_unique_run_task_hash(db_session: AsyncSession) -
 
 
 @pytest.mark.asyncio
+async def test_approval_request_distinct_hash_per_attempt_does_not_collide(
+    db_session: AsyncSession,
+) -> None:
+    # Complements the collision test above: a *different* payload_hash for the same
+    # (run_id, task_id) -- exactly what compute_payload_hash's retry_count parameter
+    # produces on a second attempt -- must coexist and be independently resolvable.
+    # Without this, task.retry on an approval-required task would deadlock the run.
+    run = await _make_run(db_session)
+    task = AgentTask(
+        run_id=run.id,
+        plan_version=1,
+        sequence_index=0,
+        description="Send email",
+        tool_name="send_email",
+        tool_args={},
+    )
+    db_session.add(task)
+    await db_session.flush()
+
+    now = datetime.now(UTC)
+    first_attempt = ApprovalRequest(
+        run_id=run.id,
+        task_id=task.id,
+        action_type="send_email",
+        target="someone@example.com",
+        action_payload={"subject": "hi"},
+        payload_hash="hash-attempt-0",
+        status=ApprovalStatus.APPROVED,
+        requested_at=now,
+        expires_at=now + timedelta(minutes=15),
+        resolved_at=now,
+    )
+    second_attempt = ApprovalRequest(
+        run_id=run.id,
+        task_id=task.id,
+        action_type="send_email",
+        target="someone@example.com",
+        action_payload={"subject": "hi"},
+        payload_hash="hash-attempt-1",
+        status=ApprovalStatus.PENDING,
+        requested_at=now,
+        expires_at=now + timedelta(minutes=15),
+    )
+    db_session.add_all([first_attempt, second_attempt])
+    await db_session.commit()
+
+    assert first_attempt.id != second_attempt.id
+    assert second_attempt.status == ApprovalStatus.PENDING
+
+
+@pytest.mark.asyncio
 async def test_workspace_artifact_and_event_and_preference(db_session: AsyncSession) -> None:
     run = await _make_run(db_session)
 

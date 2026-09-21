@@ -10,6 +10,10 @@ COPY backend/ /app/
 
 RUN pip install --no-cache-dir .
 
+# Browser automation tools run Playwright in-process in this container (not a separate
+# service) -- it needs its own Chromium binary and OS-level dependencies.
+RUN playwright install --with-deps chromium
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \

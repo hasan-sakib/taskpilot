@@ -34,6 +34,18 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                 }
 
             retry_count = state.get("retry_count", 0) + 1
+            # Increment the DB column relative to its current value, never assign from
+            # graph-state retry_count directly: graph-state resets to 0 on every replan
+            # and on verification success, but task.retry_count must stay strictly
+            # monotonic for the task's whole lifetime -- it's also what
+            # compute_payload_hash uses (via permission_evaluation) to give a manually
+            # retried attempt (task.retry tool) a fresh, resolvable ApprovalRequest.
+            # Assigning here instead of incrementing let an automatic retry sequence
+            # silently roll task.retry_count back down after a manual retry had already
+            # pushed it higher, so a later manual retry could recompute the exact same
+            # hash as a prior (already-resolved) attempt and deadlock the run waiting on
+            # an approval nothing could ever resolve again.
+            task.retry_count += 1
             if retry_count <= max_retries:
                 await ctx.log_event(
                     "task_retry_scheduled",

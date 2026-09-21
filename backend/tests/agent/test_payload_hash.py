@@ -64,6 +64,18 @@ def test_hash_changes_with_workspace_root():
     assert _hash() != _hash(workspace_root="/other-workspace")
 
 
+def test_hash_changes_with_retry_count():
+    # Load-bearing for task.retry: without this, retrying a task whose tool requires
+    # approval would recompute the exact same hash as its first (already-resolved)
+    # attempt, collide with the ApprovalRequest unique (run_id, task_id, payload_hash)
+    # constraint, and deadlock the run waiting on an approval nothing can resolve again.
+    assert _hash(retry_count=0) != _hash(retry_count=1)
+
+
+def test_hash_defaults_retry_count_to_zero():
+    assert _hash() == _hash(retry_count=0)
+
+
 def test_hash_is_a_deterministic_sha256_hex_digest():
     h = _hash()
     assert len(h) == 64

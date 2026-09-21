@@ -4,7 +4,7 @@ import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.agent.graph.deps import GraphDependencies
 from app.agent.graph.state import AgentState, ToolResult
@@ -33,11 +33,21 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
         tool_call = state["current_tool_call"]
         assert task_id is not None and tool_call is not None
 
-        attempt_number = state.get("retry_count", 0) + 1
-
         async with deps.session_factory() as session:
             task = await session.get(AgentTask, task_id)
             assert task is not None
+
+            # Derived from the DB, not graph-state retry_count: a task can also be
+            # re-attempted via the task.retry tool, which resets status outside the
+            # normal retry_recovery loop and wouldn't otherwise be reflected in state.
+            # This keeps attempt numbers monotonic and collision-free per task_id
+            # regardless of which path triggered the re-attempt.
+            max_attempt = await session.scalar(
+                select(func.max(ToolExecution.attempt_number)).where(
+                    ToolExecution.task_id == task_id
+                )
+            )
+            attempt_number = (max_attempt or 0) + 1
 
             execution = await session.scalar(
                 select(ToolExecution).where(
@@ -81,6 +91,10 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                 run_id=run_id,
                 task_id=task_id,
                 execution_id=execution.id,
+                session_factory=deps.session_factory,
+                tool_registry=deps.tool_registry,
+                llm_provider=deps.llm_provider,
+                settings=deps.settings,
             )
 
             start = time.monotonic()

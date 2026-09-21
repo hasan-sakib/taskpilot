@@ -5,27 +5,13 @@ from pydantic import ValidationError
 from app.agent.graph.deps import GraphDependencies
 from app.agent.graph.state import AgentState, PlanTask
 from app.agent.nodes._context import NodeContext
+from app.agent.policies.dependency_policy import has_cycle
 from app.db.models.enums import EventSeverity
 
 
 def _has_cycle(plan: list[PlanTask]) -> bool:
-    by_id = {task.task_id: task for task in plan}
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color = dict.fromkeys(by_id, WHITE)
-
-    def visit(task_id: str) -> bool:
-        color[task_id] = GRAY
-        for dep_id in by_id[task_id].depends_on:
-            if dep_id not in by_id:
-                continue
-            if color.get(dep_id) == GRAY:
-                return True
-            if color.get(dep_id) == WHITE and visit(dep_id):
-                return True
-        color[task_id] = BLACK
-        return False
-
-    return any(color[task_id] == WHITE and visit(task_id) for task_id in by_id)
+    edges = {task.task_id: task.depends_on for task in plan}
+    return has_cycle(edges)
 
 
 def _validate_plan(plan: list[PlanTask], deps: GraphDependencies) -> list[str]:

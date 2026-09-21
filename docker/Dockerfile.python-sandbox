@@ -1,0 +1,11 @@
+# The image agent-generated scripts actually run inside. No package installs beyond
+# the base image -- scripts get the Python standard library only. A future phase could
+# add a small vetted package allowlist baked in at build time; there is deliberately no
+# runtime `pip install` capability inside the sandbox.
+FROM python:3.13-slim
+
+RUN useradd --no-create-home --uid 10001 --shell /usr/sbin/nologin sandbox
+RUN mkdir /sandbox && chown sandbox:sandbox /sandbox
+
+USER sandbox
+WORKDIR /sandbox

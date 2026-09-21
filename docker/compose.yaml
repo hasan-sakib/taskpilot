@@ -61,3 +61,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - sandbox-net
+    depends_on:
+      python-sandbox:
+        condition: service_completed_successfully
+
+  python-sandbox:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.python-sandbox
+    image: taskpilot-python-sandbox:latest
+    # Not a long-running service: this entry exists purely so `docker compose up --build`
+    # (re)builds the taskpilot-python-sandbox:latest image that python-runner spawns
+    # ephemeral per-script containers from (via the host Docker socket, not this compose
+    # network). It runs a trivial command, exits 0, and is never restarted.
+    command: ["true"]
+    restart: "no"
+    networks:
+      - sandbox-net
