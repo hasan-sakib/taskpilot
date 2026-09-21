@@ -52,17 +52,40 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                 if final_status not in _TERMINAL_RUN_STATUSES:
                     final_status = RunStatus.COMPLETED if overall_success else RunStatus.FAILED
 
-                try:
-                    report_text = await deps.llm_provider.generate_report(
-                        ReportRequest(
-                            goal=state["goal"],
-                            task_summaries=summaries,
-                            overall_success=overall_success,
+                if not tasks:
+                    # No task was ever created for this run (planning/plan-validation
+                    # never produced a usable plan) -- there is nothing real for a
+                    # report-writing LLM call to summarize. Asking it to anyway
+                    # invites confabulation: observed in practice, a local model given
+                    # a goal and zero grounding facts will write a plausible-sounding
+                    # narrative about research it never actually performed. Build a
+                    # deterministic report from the actual validation errors instead.
+                    validation_errors = state.get("plan_validation_errors") or []
+                    if validation_errors:
+                        joined = "\n".join(f"- {e}" for e in validation_errors)
+                        report_text = (
+                            "No plan could be validated for this goal, so no tasks were "
+                            f"run.\n\nValidation errors:\n{joined}"
                         )
-                    )
-                except LLMProviderError as exc:
-                    joined = "\n".join(f"- {s}" for s in summaries)
-                    report_text = f"Report generation failed ({exc}).\n\nTask outcomes:\n{joined}"
+                    else:
+                        report_text = (
+                            "No tasks were ever created for this run, so nothing was "
+                            "executed."
+                        )
+                else:
+                    try:
+                        report_text = await deps.llm_provider.generate_report(
+                            ReportRequest(
+                                goal=state["goal"],
+                                task_summaries=summaries,
+                                overall_success=overall_success,
+                            )
+                        )
+                    except LLMProviderError as exc:
+                        joined = "\n".join(f"- {s}" for s in summaries)
+                        report_text = (
+                            f"Report generation failed ({exc}).\n\nTask outcomes:\n{joined}"
+                        )
 
             run.final_report = report_text
             run.status = final_status

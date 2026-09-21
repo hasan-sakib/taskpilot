@@ -110,3 +110,46 @@ async def test_repeatedly_invalid_plan_exhausts_attempts_and_fails_run(
             )
         )
         assert len(invalid_events) == 3
+
+
+@pytest.mark.asyncio
+async def test_a_retried_plan_attempt_is_told_why_the_previous_one_was_rejected(
+    agent_session_factory, make_deps, workspace_root
+):
+    """Regression test: the initial planning->plan_validation retry loop (route_plan_
+    validation routes back to "planning", not "replanning", while attempts remain) used
+    to call generate_plan_response() with no prior_errors at all, unlike replanning.py --
+    so a schema-invalid plan (unlike a timeout, which is content-independent) would very
+    likely be regenerated identically on every attempt, since generate_plan runs at
+    temperature=0. Fixed by having planning.py read state["plan_validation_errors"] (set
+    by the previous plan_validation pass) and pass it through, the same way replanning.py
+    already did.
+    """
+    initial_state = await create_run(
+        agent_session_factory,
+        run_id="run-retry-feedback",
+        goal="Do something",
+        workspace_root=str(workspace_root),
+    )
+    provider = ScriptedTestProvider(
+        plans=[
+            PlanResponse(
+                tasks=[
+                    PlanTaskSpec(
+                        description="Use a tool that doesn't exist",
+                        tool_name="not_a_real_tool",
+                        tool_args={},
+                    )
+                ]
+            )
+        ],
+        report="n/a",
+    )
+    deps = make_deps(provider)
+
+    await run_graph("run-retry-feedback", initial_state, deps)
+
+    assert len(provider.plan_requests) == 3
+    assert provider.plan_requests[0].prior_errors == []
+    assert any("Unknown tool" in e for e in provider.plan_requests[1].prior_errors)
+    assert any("Unknown tool" in e for e in provider.plan_requests[2].prior_errors)

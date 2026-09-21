@@ -1,4 +1,4 @@
-import { apiClient, LONG_RUNNING_TIMEOUT_MS } from '@/lib/api-client'
+import { apiClient, getLongRunningTimeoutMs } from '@/lib/api-client'
 
 export type RunStatus =
   | 'pending'
@@ -55,7 +55,7 @@ export async function fetchRunEvents(runId: string): Promise<EventSeverityPayloa
 
 export async function createRun(body: CreateRunRequest): Promise<RunResponse> {
   const { data } = await apiClient.post<RunResponse>('/agent/runs', body, {
-    timeout: LONG_RUNNING_TIMEOUT_MS,
+    timeout: await getLongRunningTimeoutMs(),
   })
   return data
 }

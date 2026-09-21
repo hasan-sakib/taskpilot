@@ -46,7 +46,12 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"  # "ollama" | "test"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b"
-    llm_request_timeout_seconds: int = 120
+    # 120s was the original default; a real integration run against qwen3:4b on
+    # commodity hardware timed out on every planning attempt for a moderately complex
+    # multi-step goal (research + report + draft), burning all 3 plan_validation
+    # retries without ever producing a plan. 240s gives a local model realistic room
+    # to think through a non-trivial goal.
+    llm_request_timeout_seconds: int = 240
 
     # --- Agent execution limits (never allow unbounded loops) ---
     max_tasks_per_run: int = 25

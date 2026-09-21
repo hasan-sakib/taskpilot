@@ -1,4 +1,4 @@
-import { apiClient, LONG_RUNNING_TIMEOUT_MS } from '@/lib/api-client'
+import { apiClient, getLongRunningTimeoutMs } from '@/lib/api-client'
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'invalidated'
 
@@ -40,7 +40,7 @@ export async function approveApproval(
   const { data } = await apiClient.post<ApprovalResponse>(
     `/approvals/${approvalId}/approve`,
     { resolved_by: resolvedBy || undefined },
-    { timeout: LONG_RUNNING_TIMEOUT_MS },
+    { timeout: await getLongRunningTimeoutMs() },
   )
   return data
 }
@@ -53,7 +53,7 @@ export async function rejectApproval(
   const { data } = await apiClient.post<ApprovalResponse>(
     `/approvals/${approvalId}/reject`,
     { resolved_by: resolvedBy || undefined, rejection_reason: rejectionReason || undefined },
-    { timeout: LONG_RUNNING_TIMEOUT_MS },
+    { timeout: await getLongRunningTimeoutMs() },
   )
   return data
 }

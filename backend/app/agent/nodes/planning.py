@@ -8,7 +8,16 @@ from app.agent.nodes._planning_shared import generate_plan_response, persist_pla
 
 def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
     async def planning(state: AgentState) -> dict:
-        plan_response, error = await generate_plan_response(deps, state)
+        # On a plan_validation-rejected retry (route_plan_validation loops back here,
+        # not to replanning, while attempts remain), state already holds the errors
+        # from the previous attempt -- passing them through is what lets a model
+        # actually correct a schema-invalid plan instead of regenerating the same
+        # rejected plan every attempt (this call runs at temperature=0). On the very
+        # first attempt this is just the empty list build_initial_state seeds.
+        prior_errors = state.get("plan_validation_errors") or []
+        plan_response, error = await generate_plan_response(
+            deps, state, prior_errors=prior_errors
+        )
 
         async with deps.session_factory() as session:
             ctx = NodeContext(session, state["run_id"], "planning")

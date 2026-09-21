@@ -20,8 +20,22 @@ PLAN_SYSTEM_PROMPT = (
     'object has: "description" (string), "tool_name" (must be exactly one of the listed '
     'tool names), "tool_args" (object matching that tool\'s input schema), and "depends_on" '
     "(array of 0-based indices into this same tasks array, for tasks that must complete "
-    "first). Use only the listed tool names -- never invent one. Respond with JSON only, "
-    "no commentary, no markdown fences."
+    "first). Use only the listed tool names -- never invent one. "
+    "Every value in tool_args MUST be a concrete, literal value you can supply right now "
+    "(a real URL, a real file path, real text) -- there is no way for a task to reference "
+    "another task's output or result at plan time, so never write a placeholder like "
+    "'result_from_task0' or '<url from search>' as an argument value; tools do not "
+    "understand these and the task will simply fail. Your plan must fully accomplish the "
+    "goal using only tools whose arguments you can already specify -- do not plan a task "
+    "whose arguments depend on information only a prior task's result will reveal (e.g. "
+    "opening one specific URL a search will find), even if that means leaving the goal "
+    "incomplete; a plan that stops short of the goal will be reported as a success as "
+    "long as every planned task succeeds, so this is not a safe way to hand off later "
+    "work. Prefer tools whose own output is self-contained for the goal at hand -- for "
+    "example, web_research.search already returns a title, url, and snippet for each "
+    "result, which is usually enough to write a useful summary or note directly, without "
+    "ever needing to open a specific result's URL. "
+    "Respond with JSON only, no commentary, no markdown fences."
 )
 
 
