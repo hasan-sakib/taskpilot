@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.agent.llm.base import LLMProviderError
+from app.agent.llm.prompt_safety import wrap_untrusted_content
 from app.agent.tools.base import PermissionLevel, Tool, ToolCategory, ToolError, ToolRunContext
 
 MAX_INPUT_CHARS = 20_000
@@ -31,7 +32,11 @@ class SummarizeTool(Tool):
         prompt = "Summarize the following text concisely, in a few sentences."
         if args.focus:
             prompt += f" Focus specifically on: {args.focus}."
-        prompt += f"\n\nText:\n{text}"
+        # text may originate from a fetched web page or other external source, so it
+        # is treated as untrusted regardless of how this tool was invoked -- see
+        # prompt_safety.wrap_untrusted_content for what this delimiter does and, more
+        # importantly, doesn't guarantee.
+        prompt += "\n\n" + wrap_untrusted_content("text to summarize", text)
 
         try:
             summary = await ctx.llm_provider.complete_text(prompt)

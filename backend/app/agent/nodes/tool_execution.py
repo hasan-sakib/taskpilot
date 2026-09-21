@@ -33,6 +33,9 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
         tool_call = state["current_tool_call"]
         assert task_id is not None and tool_call is not None
 
+        tool = deps.tool_registry.get(tool_call.tool_name)
+        assert tool is not None
+
         async with deps.session_factory() as session:
             task = await session.get(AgentTask, task_id)
             assert task is not None
@@ -71,7 +74,7 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                     task_id=task_id,
                     attempt_number=attempt_number,
                     tool_name=tool_call.tool_name,
-                    input_payload=tool_call.args,
+                    input_payload=tool.redact_for_audit(tool_call.args),
                     payload_hash=tool_call.payload_hash,
                     approval_request_id=state.get("pending_approval_id"),
                     status=ToolExecutionStatus.STARTED,
@@ -82,9 +85,6 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
 
             task.status = TaskStatus.IN_PROGRESS
             await session.commit()
-
-            tool = deps.tool_registry.get(tool_call.tool_name)
-            assert tool is not None
 
             run_ctx = ToolRunContext(
                 workspace_root=Path(state["workspace_root"]),
@@ -106,7 +106,9 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
                 duration_ms = int((time.monotonic() - start) * 1000)
                 output_data = output.model_dump()
                 execution.status = ToolExecutionStatus.SUCCEEDED
-                execution.output_summary = json.dumps(output_data)[:OUTPUT_SUMMARY_MAX_CHARS]
+                execution.output_summary = json.dumps(tool.redact_for_audit(output_data))[
+                    :OUTPUT_SUMMARY_MAX_CHARS
+                ]
                 result = ToolResult(success=True, data=output_data, duration_ms=duration_ms)
             except TimeoutError:
                 duration_ms = int((time.monotonic() - start) * 1000)

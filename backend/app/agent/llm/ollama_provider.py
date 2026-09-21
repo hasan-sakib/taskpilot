@@ -11,6 +11,7 @@ from app.agent.llm.base import (
     PlanResponse,
     ReportRequest,
 )
+from app.agent.llm.prompt_safety import wrap_untrusted_content
 from app.core.config import get_settings
 
 PLAN_SYSTEM_PROMPT = (
@@ -44,9 +45,16 @@ class OllamaProvider(LLMProvider):
         user_prompt = f"Goal: {request.goal}\n\nAvailable tools:\n{tool_lines}"
         if request.prior_errors:
             joined = "\n".join(f"- {e}" for e in request.prior_errors)
-            user_prompt += f"\n\nThe previous plan was rejected for these reasons:\n{joined}"
+            # Mostly system-generated (validation/provider errors), but a tool's error
+            # message could in principle echo back external content -- wrap on general
+            # principle, same as prior_results_summary below.
+            user_prompt += "\n\n" + wrap_untrusted_content(
+                "reasons the previous plan was rejected", joined
+            )
         if request.prior_results_summary:
-            user_prompt += f"\n\nProgress so far:\n{request.prior_results_summary}"
+            user_prompt += "\n\n" + wrap_untrusted_content(
+                "progress so far", request.prior_results_summary
+            )
 
         try:
             response = await asyncio.wait_for(
@@ -76,8 +84,9 @@ class OllamaProvider(LLMProvider):
         summary_lines = "\n".join(f"- {s}" for s in request.task_summaries)
         status = "succeeded" if request.overall_success else "did not fully succeed"
         prompt = (
-            f"Goal: {request.goal}\n\nTask outcomes:\n{summary_lines}\n\n"
-            f"Overall status: {status}\n\n"
+            f"Goal: {request.goal}\n\n"
+            + wrap_untrusted_content("task outcomes", summary_lines)
+            + f"\n\nOverall status: {status}\n\n"
             "Write a concise final report (plain text, a few short paragraphs) summarizing "
             "what was accomplished, referencing the task outcomes above."
         )

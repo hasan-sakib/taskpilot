@@ -23,7 +23,13 @@ def make(deps: GraphDependencies) -> Callable[[AgentState], Awaitable[dict]]:
 
             if result.success:
                 task.status = TaskStatus.COMPLETED
-                task.result_summary = json.dumps(result.data or {})[:RESULT_SUMMARY_MAX_CHARS]
+                tool_call = state["current_tool_call"]
+                redacted_data = result.data or {}
+                if tool_call is not None:
+                    tool = deps.tool_registry.get(tool_call.tool_name)
+                    if tool is not None:
+                        redacted_data = tool.redact_for_audit(redacted_data)
+                task.result_summary = json.dumps(redacted_data)[:RESULT_SUMMARY_MAX_CHARS]
                 await ctx.log_event("task_completed", task_id=task_id)
                 await session.commit()
                 return {"retry_count": 0}

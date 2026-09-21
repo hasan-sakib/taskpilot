@@ -66,15 +66,61 @@ class Tool(ABC):
     timeout_seconds: ClassVar[int] = 30
 
     def evaluate_permission(self, args: dict, preferences: dict) -> PermissionDecision:
-        # Preferences will be able to ADD approval requirements once wired up in Phase 4,
-        # but can never lower a tool below its own default -- that floor is enforced here,
-        # not by trusting whatever the preference/LLM layer says.
+        # A tool's own REQUIRES_APPROVAL default is a floor, never lowered by a
+        # preference -- only ever raised. A confirmed `tool.<name>.require_approval`
+        # preference can push an AUTO tool up to requiring approval; there is no
+        # preference key that does the reverse, so memory can never override the
+        # permission system down to something less safe than a tool's own default.
         if self.default_permission == PermissionLevel.REQUIRES_APPROVAL:
             return PermissionDecision(True, f"{self.name} requires approval by default")
+
+        override_key = f"tool.{self.name}.require_approval"
+        if preferences.get(override_key) is True:
+            return PermissionDecision(
+                True, f"{self.name} requires approval per user preference '{override_key}'"
+            )
         return PermissionDecision(False, f"{self.name} is auto-approved")
 
     @abstractmethod
     async def run(self, args: BaseModel, ctx: ToolRunContext) -> BaseModel: ...
 
     def redact_for_audit(self, args: dict) -> dict:
-        return args
+        """Called before args are written to ToolExecution.input_payload or
+        ApprovalRequest.action_payload -- both queryable via the API and shown in the
+        UI. No current tool actually takes a credential as an argument, but this
+        default heuristic (mask any key that looks like one) is real, working defense
+        in depth for whenever one does, not a placeholder. A tool with a genuinely
+        sensitive field can override this for something more precise.
+        """
+        return _redact_dict(args)
+
+
+_SECRET_KEY_MARKERS = (
+    "password",
+    "passwd",
+    "secret",
+    "api_key",
+    "apikey",
+    "access_key",
+    "private_key",
+    "token",
+    "credential",
+    "auth",
+)
+_REDACTED = "***REDACTED***"
+
+
+def _looks_like_secret_key(key: str) -> bool:
+    lowered = key.lower()
+    return any(marker in lowered for marker in _SECRET_KEY_MARKERS)
+
+
+def _redact_dict(value: object) -> object:
+    if isinstance(value, dict):
+        return {
+            k: (_REDACTED if isinstance(v, str) and _looks_like_secret_key(k) else _redact_dict(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_dict(item) for item in value]
+    return value

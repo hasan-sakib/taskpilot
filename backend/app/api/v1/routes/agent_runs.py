@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.graph.deps import GraphDependencies
 from app.agent.graph.runner import run_graph
 from app.agent.graph.state import build_initial_state
-from app.agent.llm.factory import get_llm_provider
-from app.agent.tools.registry import build_default_registry
 from app.core.config import Settings, get_settings
 from app.db.base import new_uuid, utcnow
 from app.db.models.agent_run import AgentRun
 from app.db.models.enums import RunStatus
 from app.db.session import get_session
+from app.memory.preferences import load_confirmed_preferences_snapshot
 from app.schemas.agent_run import CreateRunRequest, RunResponse
+from app.services.graph_dependencies import build_graph_dependencies
 
 router = APIRouter(prefix="/agent/runs", tags=["agent"])
 
@@ -30,16 +29,14 @@ async def create_run(
         goal=body.goal,
         status=RunStatus.PENDING,
         model_name=settings.ollama_model if provider_name == "ollama" else None,
+        test_mode=provider_name == "test",
         workspace_root=workspace_root,
     )
     session.add(run)
     await session.commit()
 
-    deps = GraphDependencies(
-        llm_provider=get_llm_provider(provider_name),
-        tool_registry=build_default_registry(),
-        settings=settings,
-    )
+    deps = build_graph_dependencies(settings, provider_name)
+    preferences_snapshot = await load_confirmed_preferences_snapshot(session)
     initial_state = build_initial_state(
         run_id=run.id,
         goal=body.goal,
@@ -49,6 +46,7 @@ async def create_run(
         max_retries_per_task=settings.max_retries_per_task,
         max_replanning_attempts=settings.max_replanning_attempts,
         max_plan_validation_attempts=settings.max_plan_validation_attempts,
+        user_preferences_snapshot=preferences_snapshot,
     )
 
     try:
@@ -69,4 +67,23 @@ async def get_run(run_id: str, session: AsyncSession = Depends(get_session)) -> 
     run = await session.get(AgentRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail=f"No such run: {run_id}")
+    return RunResponse.model_validate(run)
+
+
+@router.post("/{run_id}/cancel", response_model=RunResponse)
+async def cancel_run(run_id: str, session: AsyncSession = Depends(get_session)) -> RunResponse:
+    run = await session.get(AgentRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"No such run: {run_id}")
+    if run.status in (RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED):
+        raise HTTPException(
+            status_code=409, detail=f"Run is already terminal (status={run.status.value})"
+        )
+
+    # Cooperative cancellation: task_selection checks this flag at the top of every
+    # cycle (the graph has no true mid-node preemption) and routes to a CANCELLED
+    # terminal state on its next pass -- this just sets the flag; it doesn't (and
+    # can't, from this concurrent request) stop an in-flight tool call immediately.
+    run.cancel_requested = True
+    await session.commit()
     return RunResponse.model_validate(run)
