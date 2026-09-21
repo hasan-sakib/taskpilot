@@ -22,7 +22,6 @@ import { formatStatusLabel, taskStatusVariant } from '@/lib/status'
 
 const TASK_STATUSES: TaskStatus[] = [
   'pending',
-  'ready',
   'in_progress',
   'blocked_on_approval',
   'completed',

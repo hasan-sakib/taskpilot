@@ -11,7 +11,6 @@ import { formatStatusLabel, taskStatusVariant } from '@/lib/status'
 
 const STATUS_ICONS: Record<TaskStatus, LucideIcon> = {
   pending: CircleDashed,
-  ready: CircleDashed,
   in_progress: Loader2,
   blocked_on_approval: AlertCircle,
   completed: CheckCircle2,

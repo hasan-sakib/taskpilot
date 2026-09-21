@@ -42,7 +42,7 @@ async def test_create_run_and_task_with_dependency(db_session: AsyncSession) -> 
         description="Search for jobs",
         tool_name="web_search",
         tool_args={"query": "AI engineer"},
-        status=TaskStatus.READY,
+        status=TaskStatus.PENDING,
     )
     task_b = AgentTask(
         run_id=run.id,

@@ -62,6 +62,16 @@ async def test_approval_required_tool_pauses_then_resumes_on_approve(
         run = await session.get(AgentRun, "run-approve")
         assert run.status == RunStatus.PAUSED_FOR_APPROVAL
 
+        # Full task-lifecycle checkpoint: at a genuine pause, the task is DB-observable
+        # mid-flight (unlike every other transition, which happens synchronously inside
+        # one run_graph()/resolve_approval() call and can only be asserted before/after).
+        task = (
+            await session.scalars(
+                select(AgentTask).where(AgentTask.run_id == "run-approve")
+            )
+        ).one()
+        assert task.status == TaskStatus.BLOCKED_ON_APPROVAL
+
     final_result = await resolve_approval(approval_id, "approved", deps)
 
     assert not is_paused(final_result)
@@ -69,6 +79,12 @@ async def test_approval_required_tool_pauses_then_resumes_on_approve(
     assert (workspace_root / "note.txt").read_text() == "hello world"
 
     async with agent_session_factory() as session:
+        task = (
+            await session.scalars(
+                select(AgentTask).where(AgentTask.run_id == "run-approve")
+            )
+        ).one()
+        assert task.status == TaskStatus.COMPLETED  # blocked_on_approval -> completed
         # The duplicate-execution-prevention invariant: exactly one ToolExecution row,
         # even though this run passed through permission_evaluation twice (once to
         # request approval, once on replay after resume).

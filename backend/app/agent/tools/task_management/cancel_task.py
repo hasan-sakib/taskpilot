@@ -6,7 +6,6 @@ from app.db.models.enums import TaskStatus
 
 _CANCELLABLE_FROM = {
     TaskStatus.PENDING,
-    TaskStatus.READY,
     TaskStatus.BLOCKED_ON_APPROVAL,
     TaskStatus.FAILED,
 }

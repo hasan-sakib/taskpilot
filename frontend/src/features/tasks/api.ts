@@ -2,7 +2,6 @@ import { apiClient } from '@/lib/api-client'
 
 export type TaskStatus =
   | 'pending'
-  | 'ready'
   | 'in_progress'
   | 'blocked_on_approval'
   | 'completed'

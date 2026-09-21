@@ -12,7 +12,6 @@ class RunStatus(enum.StrEnum):
 
 class TaskStatus(enum.StrEnum):
     PENDING = "pending"
-    READY = "ready"
     IN_PROGRESS = "in_progress"
     BLOCKED_ON_APPROVAL = "blocked_on_approval"
     COMPLETED = "completed"

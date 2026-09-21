@@ -14,7 +14,6 @@ const RUN_STATUS_VARIANTS: Record<string, BadgeVariant> = {
 
 const TASK_STATUS_VARIANTS: Record<string, BadgeVariant> = {
   pending: 'secondary',
-  ready: 'secondary',
   in_progress: 'warning',
   blocked_on_approval: 'warning',
   completed: 'success',
