@@ -1,0 +1,37 @@
+# Environment
+.env
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Backend data (SQLite DBs, checkpoints)
+backend/data/
+data/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Workspace contents are user/agent-generated; keep the folders, ignore the files
+workspace/documents/*
+workspace/research/*
+workspace/scripts/*
+workspace/reports/*
+workspace/exports/*
+!workspace/**/.gitkeep
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/

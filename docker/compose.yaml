@@ -1,0 +1,63 @@
+name: taskpilot
+
+networks:
+  app-net:
+    driver: bridge
+  sandbox-net:
+    driver: bridge
+    internal: true # python-runner is reachable only from the backend, never from the frontend/host
+
+volumes:
+  taskpilot-db:
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    env_file:
+      - ../.env
+    environment:
+      TASKPILOT_HOST: 0.0.0.0
+      TASKPILOT_DATA_DIR: /app/data
+      TASKPILOT_WORKSPACE_ROOT: /app/workspace
+      TASKPILOT_OLLAMA_BASE_URL: ${TASKPILOT_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      TASKPILOT_PYTHON_RUNNER_BASE_URL: http://python-runner:8100
+    volumes:
+      - taskpilot-db:/app/data
+      - ../workspace:/app/workspace
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - app-net
+      - sandbox-net
+    depends_on:
+      python-runner:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    environment:
+      VITE_BACKEND_URL: http://backend:8000
+    ports:
+      - "127.0.0.1:5173:5173"
+    networks:
+      - app-net
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  python-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.python-runner
+    # No host port published, and no membership in app-net: unreachable from the
+    # frontend and from outside the host. Only `backend` can reach it, over sandbox-net.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - sandbox-net
