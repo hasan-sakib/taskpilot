@@ -10,11 +10,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useHealth } from '@/features/health/use-health'
+import { useRuns } from '@/features/runs/use-runs'
+import { formatStatusLabel, isTerminalRunStatus, runStatusVariant } from '@/lib/status'
 import { cn } from '@/lib/utils'
 
 export function Topbar() {
   const location = useLocation()
   const { data: health, isLoading } = useHealth()
+  const { data: runs } = useRuns(10)
+  const activeRun = runs?.find((run) => !isTerminalRunStatus(run.status))
 
   const currentTitle =
     navItems.find((item) =>
@@ -49,7 +53,9 @@ export function Topbar() {
           </TooltipContent>
         </Tooltip>
 
-        <Badge variant="secondary">Agent idle</Badge>
+        <Badge variant={activeRun ? runStatusVariant(activeRun.status) : 'secondary'}>
+          {activeRun ? formatStatusLabel(activeRun.status) : 'Agent idle'}
+        </Badge>
 
         <Button variant="ghost" size="icon" asChild>
           <Link to="/settings" aria-label="Settings">

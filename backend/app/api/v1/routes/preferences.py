@@ -40,10 +40,6 @@ async def create_preference(
         raise HTTPException(
             status_code=409, detail=f"Preference already exists: {body.key}"
         ) from exc
-    # updated_at is server-computed (onupdate=func.now()); refresh so the response
-    # model can read it without triggering a lazy-load outside an awaited context
-    # (FastAPI's response serialization runs synchronously and can't await one).
-    await session.refresh(preference)
     return preference
 
 
@@ -67,9 +63,6 @@ async def update_preference(
         preference.available_to_future_runs = body.available_to_future_runs
 
     await session.commit()
-    # Same reason as create_preference: updated_at is server-computed via onupdate,
-    # and isn't refreshed into the in-memory object by commit() alone.
-    await session.refresh(preference)
     return preference
 
 

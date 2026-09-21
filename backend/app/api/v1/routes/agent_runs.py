@@ -1,18 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.graph.runner import run_graph
 from app.agent.graph.state import build_initial_state
 from app.core.config import Settings, get_settings
 from app.db.base import new_uuid, utcnow
+from app.db.models.agent_event import AgentEvent
 from app.db.models.agent_run import AgentRun
 from app.db.models.enums import RunStatus
 from app.db.session import get_session
 from app.memory.preferences import load_confirmed_preferences_snapshot
+from app.schemas.agent_event import AgentEventResponse
 from app.schemas.agent_run import CreateRunRequest, RunResponse
 from app.services.graph_dependencies import build_graph_dependencies
 
 router = APIRouter(prefix="/agent/runs", tags=["agent"])
+
+
+@router.get("", response_model=list[RunResponse])
+async def list_runs(
+    limit: int = Query(default=50, ge=1, le=200),
+    session: AsyncSession = Depends(get_session),
+) -> list[RunResponse]:
+    runs = await session.scalars(
+        select(AgentRun).order_by(AgentRun.created_at.desc()).limit(limit)
+    )
+    return [RunResponse.model_validate(run) for run in runs]
 
 
 @router.post("", response_model=RunResponse, status_code=201)
@@ -68,6 +82,22 @@ async def get_run(run_id: str, session: AsyncSession = Depends(get_session)) -> 
     if run is None:
         raise HTTPException(status_code=404, detail=f"No such run: {run_id}")
     return RunResponse.model_validate(run)
+
+
+@router.get("/{run_id}/events", response_model=list[AgentEventResponse])
+async def list_run_events(
+    run_id: str, session: AsyncSession = Depends(get_session)
+) -> list[AgentEventResponse]:
+    run = await session.get(AgentRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"No such run: {run_id}")
+
+    events = await session.scalars(
+        select(AgentEvent)
+        .where(AgentEvent.run_id == run_id)
+        .order_by(AgentEvent.created_at.asc())
+    )
+    return [AgentEventResponse.model_validate(event) for event in events]
 
 
 @router.post("/{run_id}/cancel", response_model=RunResponse)

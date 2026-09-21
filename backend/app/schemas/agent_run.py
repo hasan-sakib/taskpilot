@@ -19,6 +19,7 @@ class RunResponse(BaseModel):
     model_name: str | None
     final_report: str | None
     error_message: str | None
+    cancel_requested: bool
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
