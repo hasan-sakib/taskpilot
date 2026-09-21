@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 642eceb94a31
+Revision ID: 4ee744b67faf
 Revises: 
-Create Date: 2026-09-21 12:55:45.003837
+Create Date: 2026-09-21 13:23:30.806459
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '642eceb94a31'
+revision: str = '4ee744b67faf'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -35,8 +35,8 @@ def upgrade() -> None:
     sa.Column('created_by', sa.String(), nullable=True),
     sa.Column('cancel_requested', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_preferences',
@@ -46,8 +46,8 @@ def upgrade() -> None:
     sa.Column('available_to_future_runs', sa.Boolean(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_user_preferences_key'), 'user_preferences', ['key'], unique=True)
@@ -66,8 +66,8 @@ def upgrade() -> None:
     sa.Column('error_message', sa.Text(), nullable=True),
     sa.Column('parent_task_id', sa.String(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['parent_task_id'], ['agent_tasks.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
@@ -82,8 +82,8 @@ def upgrade() -> None:
     sa.Column('payload', sa.JSON(), nullable=False),
     sa.Column('severity', sa.Enum('debug', 'info', 'warning', 'error', name='eventseverity'), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
@@ -103,8 +103,8 @@ def upgrade() -> None:
     sa.Column('resolved_by', sa.String(), nullable=True),
     sa.Column('rejection_reason', sa.Text(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
@@ -122,8 +122,8 @@ def upgrade() -> None:
     sa.Column('started_at', sa.DateTime(), nullable=True),
     sa.Column('closed_at', sa.DateTime(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
@@ -132,8 +132,8 @@ def upgrade() -> None:
     sa.Column('task_id', sa.String(), nullable=False),
     sa.Column('depends_on_task_id', sa.String(), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['depends_on_task_id'], ['agent_tasks.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
@@ -151,8 +151,8 @@ def upgrade() -> None:
     sa.Column('mime_type', sa.String(), nullable=True),
     sa.Column('created_by_tool', sa.String(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
@@ -174,8 +174,8 @@ def upgrade() -> None:
     sa.Column('started_at', sa.DateTime(), nullable=True),
     sa.Column('completed_at', sa.DateTime(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['approval_request_id'], ['approval_requests.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['run_id'], ['agent_runs.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='CASCADE'),

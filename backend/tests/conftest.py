@@ -5,9 +5,13 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+# Explicitly imported here (not just relied on transitively via app.db.session below) so
+# this fixture's Base.metadata.create_all() can never silently create zero tables --
+# see app/db/session.py for the full story on why that's a real failure mode.
+from app.db import models as _models  # noqa: F401
 from app.db.base import Base
 from app.db.session import get_session
-from app.db.sqlite_pragma import enable_sqlite_foreign_keys
+from app.db.sqlite_pragma import configure_sqlite_connection
 
 
 @pytest_asyncio.fixture
@@ -17,7 +21,7 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    enable_sqlite_foreign_keys(engine)
+    configure_sqlite_connection(engine)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
